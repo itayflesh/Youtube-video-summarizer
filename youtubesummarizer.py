@@ -10,9 +10,6 @@ from scenedetect import detect, ContentDetector, ThresholdDetector
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
-from scenedetect.detectors import ContentDetector
-import cv2
-
 def detect_major_frames(video_path, subject):
     
     threshold=50.0
