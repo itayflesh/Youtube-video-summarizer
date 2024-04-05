@@ -1,4 +1,3 @@
-import random
 from pytube import Search, YouTube
 import certifi
 import ssl
@@ -82,14 +81,6 @@ def is_attractive_frame(frame, brightness_threshold=200):
 
     # Check if the frame is attractive based on brightness threshold
     return average_brightness > brightness_threshold
-
-
-def calculate_attractiveness(frame_img):
-    # Placeholder function to calculate attractiveness score
-    # You can implement your own algorithm to evaluate visual appeal
-    # Here, we simply return a random score between 0 and 1 as an example
-    return random.uniform(0, 1)
-
 
 def search_and_download(subject, max_downloads=1):
     # Search for videos on YouTube
