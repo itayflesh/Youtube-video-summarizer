@@ -86,12 +86,12 @@ def detect_major_frames(video_path, subject,x):
             if scene not in attractive_frames:
                 key_frame_path = f'{subject}_{x}_major_scene_{scene}.jpg'
                 cv2.imwrite(key_frame_path, frame)
-                print(f'Saved key frame for major scene {scene} of {subject}')
+                # print(f'Saved key frame for major scene {scene} of {subject}')
 
         for scene, frame in attractive_frames.items():
             key_frame_path = f'{subject}_{x}_attractive_frame_{scene}.jpg'
             cv2.imwrite(key_frame_path, frame)
-            print(f'Saved attractive frame for scene {scene} of {subject}')
+            # print(f'Saved attractive frame for scene {scene} of {subject}')
     else:
         print(f"Error: Unable to open video file {video_path}")
 
@@ -159,19 +159,21 @@ def create_gif(image_paths, gif_path, duration=100):
     frames[0].save(gif_path, save_all=True, append_images=frames[1:], optimize=False, duration=duration, loop=0)
 
 
-def search_and_download(subject, max_downloads=3):
+def search_and_download(subject):
     # Search for videos on YouTube
     search_results = Search(subject).results
 
     downloaded_count = 0
 
     for video in search_results:
-        if video.length >= 120:
+        
+        #limit duration for each video
+        if video.length >= 600:
             continue
 
         print(f"Downloading video {downloaded_count + 1}: {video.title}")
-        print(f"URL: {video.watch_url}")
-        print(f"Duration: {video.length} seconds")
+        # print(f"URL: {video.watch_url}")
+        # print(f"Duration: {video.length} seconds")
 
         try:
             # Download the video
@@ -185,15 +187,17 @@ def search_and_download(subject, max_downloads=3):
             detect_major_frames(video_path, subject,downloaded_count + 1)
 
             downloaded_count += 1
-            if downloaded_count == max_downloads:
-                break
+
+            # limit results fro tests..
+            # if downloaded_count == 3:
+            #     break
         except AgeRestrictedError:
             print(f"Video {downloaded_count + 1} is age-restricted and cannot be downloaded. Skipping...")
         except Exception as e:
             print(f"An error occurred while downloading video {downloaded_count + 1}: {str(e)}")
 
     if downloaded_count == 0:
-        print("No videos found less than 2 minutes.")
+        print("No videos found less than 10 minutes.")
 
 # Ask the user for a subject
 subject = input("Enter a subject to search on YouTube: ")
