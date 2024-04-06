@@ -1,3 +1,4 @@
+import numpy as np
 from pytube import Search, YouTube
 import certifi
 import ssl
@@ -7,29 +8,37 @@ from scenedetect.detectors import ContentDetector
 from scenedetect import VideoManager
 import cv2
 from scenedetect import detect, ContentDetector, ThresholdDetector
+import imagehash
+from PIL import Image
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
 def detect_major_frames(video_path, subject):
-    
-    threshold=50.0
-    min_scene_len=30
-    
+    threshold = 50.0
+    min_scene_len = 30
+    colorfulness_threshold = 25
+    phash_threshold = 10
+    black_threshold = 20
+
     # Create a VideoCapture object
     cap = cv2.VideoCapture(video_path)
 
     # Initialize a ContentDetector with adjustable parameters
     detector = ContentDetector(threshold=threshold, min_scene_len=min_scene_len)
 
-    # Initialize variables to store major scenes and attractive frames
-    major_scenes = []
-    attractive_frames = []
+    # Initialize variables to store major scenes, attractive frames, and their pHashes
+    major_scenes = {}
+    attractive_frames = {}
+    phash_dict = {}
 
     # Open the video file
     if cap.isOpened():
         # Create a frame skip counter
         frame_skip = 0
         frame_num = 0
+        current_scene = 0
+        scene_start_frame = 0
+
         while True:
             # Read a frame from the video
             ret, frame = cap.read()
@@ -39,45 +48,71 @@ def detect_major_frames(video_path, subject):
             # Process frame every 10 frames
             frame_skip += 1
             frame_num += 1
+
             if frame_skip % 10 == 0:
                 # Detect content changes in the frame
                 scene_list = detector.process_frame(frame_num, frame)
 
-                # If a scene change is detected, save the frame as a major scene
+                # If a scene change is detected, save the middle frame of the previous scene
                 if scene_list:
-                    major_scenes.append(frame)
+                    if current_scene > 0:
+                        scene_end_frame = frame_num - 1
+                        scene_middle_frame = (scene_start_frame + scene_end_frame) // 2
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, scene_middle_frame)
+                        _, middle_frame = cap.read()
+                        if not is_black_frame(middle_frame, black_threshold):
+                            phash = imagehash.phash(Image.fromarray(middle_frame))
+                            if current_scene not in phash_dict or not is_similar_phash(phash, phash_dict[current_scene], phash_threshold):
+                                major_scenes[current_scene] = middle_frame
+                                phash_dict[current_scene] = phash
+                    current_scene += 1
+                    scene_start_frame = frame_num
 
-                # Check for attractiveness of the frame (e.g., based on brightness or colorfulness)
-                # For demonstration purposes, let's consider frames with high brightness as attractive
-                if is_attractive_frame(frame):
-                    attractive_frames.append(frame)
+                # Check for attractiveness of the frame
+                if is_attractive_frame(frame, colorfulness_threshold):
+                    phash = imagehash.phash(Image.fromarray(frame))
+                    if current_scene not in attractive_frames or not is_similar_phash(phash, phash_dict[current_scene], phash_threshold):
+                        attractive_frames[current_scene] = frame
+                        phash_dict[current_scene] = phash
 
         # Release the VideoCapture object
         cap.release()
 
-        # Save key frames for major scenes
-        for i, frame in enumerate(major_scenes[:3]):
-            key_frame_path = f'{subject}_major_scene_{i+1}.jpg'
-            cv2.imwrite(key_frame_path, frame)
-            print(f'Saved key frame for major scene {i+1} of {subject}')
+        # Save key frames for major scenes (middle frames) and attractive frames from each scene
+        for scene, frame in major_scenes.items():
+            if scene not in attractive_frames:
+                key_frame_path = f'{subject}_major_scene_{scene}.jpg'
+                cv2.imwrite(key_frame_path, frame)
+                print(f'Saved key frame for major scene {scene} of {subject}')
 
-        # Save attractive frames
-        for i, frame in enumerate(attractive_frames[:3]):
-            key_frame_path = f'{subject}_attractive_frame_{i+1}.jpg'
+        for scene, frame in attractive_frames.items():
+            key_frame_path = f'{subject}_attractive_frame_{scene}.jpg'
             cv2.imwrite(key_frame_path, frame)
-            print(f'Saved attractive frame {i+1} of {subject}_{i+1}')
+            print(f'Saved attractive frame for scene {scene} of {subject}')
     else:
         print(f"Error: Unable to open video file {video_path}")
 
-def is_attractive_frame(frame, brightness_threshold=200):
-    # Convert frame to grayscale for simplicity
-    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    
-    # Compute the average brightness of the frame
-    average_brightness = cv2.mean(gray_frame)[0]
+def is_attractive_frame(frame, colorfulness_threshold):
+    colorfulness = calculate_colorfulness(frame)
+    return colorfulness > colorfulness_threshold
 
-    # Check if the frame is attractive based on brightness threshold
-    return average_brightness > brightness_threshold
+def calculate_colorfulness(frame):
+    (B, G, R) = cv2.split(frame.astype("float"))
+    rg = np.absolute(R - G)
+    yb = np.absolute(0.5 * (R + G) - B)
+    (rbMean, rbStd) = (np.mean(rg), np.std(rg))
+    (ybMean, ybStd) = (np.mean(yb), np.std(yb))
+    stdRoot = np.sqrt((rbStd ** 2) + (ybStd ** 2))
+    meanRoot = np.sqrt((rbMean ** 2) + (ybMean ** 2))
+    colorfulness = stdRoot + (0.3 * meanRoot)
+    return colorfulness
+
+def is_similar_phash(phash1, phash2, threshold):
+    return phash1 - phash2 <= threshold
+
+def is_black_frame(frame, threshold):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    return np.mean(gray) < threshold
 
 def search_and_download(subject, max_downloads=1):
     # Search for videos on YouTube
