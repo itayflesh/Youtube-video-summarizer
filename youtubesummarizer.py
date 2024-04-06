@@ -126,6 +126,29 @@ def extract_text_from_image(image_path):
     
     return text.strip()
 
+def add_watermark(image_path, watermark_text):
+    image = cv2.imread(image_path)
+    height, width, _ = image.shape
+
+    # Set the font and size of the watermark text
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 1
+    thickness = 2
+
+    # Get the size of the watermark text
+    text_size, _ = cv2.getTextSize(watermark_text, font, font_scale, thickness)
+    text_width, text_height = text_size
+
+    # Calculate the position of the watermark text (bottom right corner)
+    x = width - text_width - 10
+    y = height - 10
+
+    # Add the watermark text to the image
+    cv2.putText(image, watermark_text, (x, y), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
+
+    # Save the watermarked image
+    cv2.imwrite(image_path, image)
+
 def search_and_download(subject, max_downloads=2):
     # Search for videos on YouTube
     search_results = Search(subject).results
@@ -173,6 +196,7 @@ reader = easyocr.Reader(['en'])
 
 # Extract text from saved images
 image_directory = "."  # Current directory
+watermark_text = "Itay Flesh"
 
 for filename in os.listdir(image_directory):
     if filename.endswith(".jpg") or filename.endswith(".png"):
@@ -186,3 +210,6 @@ for filename in os.listdir(image_directory):
             scene_number = int(filename.split("_")[-1].split(".")[0])
             text = extract_text_from_image(image_path)
             print(f"Text in attractive frame {scene_number}: {text}")
+        
+        # Add watermark to the image
+        add_watermark(image_path, watermark_text)
