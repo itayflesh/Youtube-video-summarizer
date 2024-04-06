@@ -2,6 +2,7 @@ import numpy as np
 from pytube import Search, YouTube
 import certifi
 import ssl
+import os
 from pytube.exceptions import AgeRestrictedError
 from scenedetect import VideoManager, SceneManager
 from scenedetect.detectors import ContentDetector
@@ -10,10 +11,11 @@ import cv2
 from scenedetect import detect, ContentDetector, ThresholdDetector
 import imagehash
 from PIL import Image
+import easyocr
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
-def detect_major_frames(video_path, subject):
+def detect_major_frames(video_path, subject,x):
     threshold = 50.0
     min_scene_len = 30
     colorfulness_threshold = 25
@@ -81,12 +83,12 @@ def detect_major_frames(video_path, subject):
         # Save key frames for major scenes (middle frames) and attractive frames from each scene
         for scene, frame in major_scenes.items():
             if scene not in attractive_frames:
-                key_frame_path = f'{subject}_major_scene_{scene}.jpg'
+                key_frame_path = f'{subject}_{x}_major_scene_{scene}.jpg'
                 cv2.imwrite(key_frame_path, frame)
                 print(f'Saved key frame for major scene {scene} of {subject}')
 
         for scene, frame in attractive_frames.items():
-            key_frame_path = f'{subject}_attractive_frame_{scene}.jpg'
+            key_frame_path = f'{subject}_{x}_attractive_frame_{scene}.jpg'
             cv2.imwrite(key_frame_path, frame)
             print(f'Saved attractive frame for scene {scene} of {subject}')
     else:
@@ -114,7 +116,17 @@ def is_black_frame(frame, threshold):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     return np.mean(gray) < threshold
 
-def search_and_download(subject, max_downloads=1):
+def extract_text_from_image(image_path):
+    reader = easyocr.Reader(['en'])
+    result = reader.readtext(image_path)
+    
+    text = ""
+    for detection in result:
+        text += detection[1] + " "
+    
+    return text.strip()
+
+def search_and_download(subject, max_downloads=2):
     # Search for videos on YouTube
     search_results = Search(subject).results
 
@@ -137,7 +149,7 @@ def search_and_download(subject, max_downloads=1):
             print(f"Video {downloaded_count + 1} downloaded successfully!")
             
             # Detect major frames in the downloaded video
-            detect_major_frames(video_path, subject)
+            detect_major_frames(video_path, subject,downloaded_count + 1)
 
             downloaded_count += 1
             if downloaded_count == max_downloads:
@@ -155,3 +167,22 @@ subject = input("Enter a subject to search on YouTube: ")
 
 # Search YouTube and download up to 5 videos
 search_and_download(subject)
+
+# Initialize EasyOCR reader
+reader = easyocr.Reader(['en'])
+
+# Extract text from saved images
+image_directory = "."  # Current directory
+
+for filename in os.listdir(image_directory):
+    if filename.endswith(".jpg") or filename.endswith(".png"):
+        image_path = os.path.join(image_directory, filename)
+        
+        if "major_scene" in filename:
+            scene_number = int(filename.split("_")[-1].split(".")[0])
+            text = extract_text_from_image(image_path)
+            print(f"Text in major frame {scene_number}: {text}")
+        elif "attractive_frame" in filename:
+            scene_number = int(filename.split("_")[-1].split(".")[0])
+            text = extract_text_from_image(image_path)
+            print(f"Text in attractive frame {scene_number}: {text}")
