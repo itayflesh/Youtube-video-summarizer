@@ -12,6 +12,7 @@ from scenedetect import detect, ContentDetector, ThresholdDetector
 import imagehash
 from PIL import Image
 import easyocr
+from IPython.display import display, Image as IPImage
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
@@ -149,7 +150,16 @@ def add_watermark(image_path, watermark_text):
     # Save the watermarked image
     cv2.imwrite(image_path, image)
 
-def search_and_download(subject, max_downloads=2):
+def create_gif(image_paths, gif_path, duration=100):
+    frames = []
+    for image_path in image_paths:
+        frame = Image.open(image_path)
+        frames.append(frame)
+
+    frames[0].save(gif_path, save_all=True, append_images=frames[1:], optimize=False, duration=duration, loop=0)
+
+
+def search_and_download(subject, max_downloads=3):
     # Search for videos on YouTube
     search_results = Search(subject).results
 
@@ -194,22 +204,48 @@ search_and_download(subject)
 # Initialize EasyOCR reader
 reader = easyocr.Reader(['en'])
 
-# Extract text from saved images
+# Extract text from saved images and add watermark
 image_directory = "."  # Current directory
 watermark_text = "Itay Flesh"
+extracted_texts = []
+image_paths = []
 
 for filename in os.listdir(image_directory):
     if filename.endswith(".jpg") or filename.endswith(".png"):
         image_path = os.path.join(image_directory, filename)
+        image_paths.append(image_path)
         
         if "major_scene" in filename:
             scene_number = int(filename.split("_")[-1].split(".")[0])
             text = extract_text_from_image(image_path)
-            print(f"Text in major frame {scene_number}: {text}")
+            # print(f"Text in major frame {scene_number}: {text}")
+            extracted_texts.append(text)
         elif "attractive_frame" in filename:
             scene_number = int(filename.split("_")[-1].split(".")[0])
             text = extract_text_from_image(image_path)
-            print(f"Text in attractive frame {scene_number}: {text}")
+            # print(f"Text in attractive frame {scene_number}: {text}")
+            extracted_texts.append(text)
         
         # Add watermark to the image
         add_watermark(image_path, watermark_text)
+
+# Check if there are any image paths
+if image_paths:
+    # Create an animated GIF with all the frames
+    num_frames = len(image_paths)
+    duration = min(10000 // num_frames, 1000)  # Maximum 1 second per frame
+    gif_path = f"{subject}_summary.gif"
+    create_gif(image_paths, gif_path, duration=duration)
+
+   # Open the GIF file
+    gif_image = Image.open(gif_path)
+
+    # Display the GIF
+    gif_image.show()
+
+    # Print the concatenated text from all frames
+    all_text = "\n".join(extracted_texts)
+    print("Concatenated text from all frames:")
+    print(all_text)
+else:
+    print("No images found to create the summary.")
