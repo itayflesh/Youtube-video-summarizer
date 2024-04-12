@@ -166,38 +166,29 @@ def search_and_download(subject):
     downloaded_count = 0
 
     for video in search_results:
-        
-        #limit duration for each video
-        if video.length >= 600:
-            continue
+        if video.length < 600:  # Check if video duration is less than 10 minutes
+            print(f"Downloading video: {video.title}")
+            try:
+                # Download the video
+                youtube = YouTube(video.watch_url)
+                video_stream = youtube.streams.get_highest_resolution()
+                video_path = f"{subject}_1.mp4"  # Naming convention for the first video
+                video_stream.download(filename=video_path)
+                print("Video downloaded successfully!")
+                
+                # Detect major frames in the downloaded video
+                detect_major_frames(video_path, subject, 1)
 
-        print(f"Downloading video {downloaded_count + 1}: {video.title}")
-        # print(f"URL: {video.watch_url}")
-        # print(f"Duration: {video.length} seconds")
-
-        try:
-            # Download the video
-            youtube = YouTube(video.watch_url)
-            video_stream = youtube.streams.get_highest_resolution()
-            video_path = f"{subject}_{downloaded_count + 1}.mp4"
-            video_stream.download(filename=video_path)
-            print(f"Video {downloaded_count + 1} downloaded successfully!")
-            
-            # Detect major frames in the downloaded video
-            detect_major_frames(video_path, subject,downloaded_count + 1)
-
-            downloaded_count += 1
-
-            # limit results fro tests..
-            # if downloaded_count == 3:
-            #     break
-        except AgeRestrictedError:
-            print(f"Video {downloaded_count + 1} is age-restricted and cannot be downloaded. Skipping...")
-        except Exception as e:
-            print(f"An error occurred while downloading video {downloaded_count + 1}: {str(e)}")
+                downloaded_count += 1
+                break  # Stop processing after downloading the first suitable video
+            except AgeRestrictedError:
+                print("Video is age-restricted and cannot be downloaded. Skipping...")
+            except Exception as e:
+                print(f"An error occurred while downloading video: {str(e)}")
 
     if downloaded_count == 0:
         print("No videos found less than 10 minutes.")
+
 
 # Ask the user for a subject
 subject = input("Enter a subject to search on YouTube: ")
@@ -250,6 +241,8 @@ if image_paths:
     # Print the concatenated text from all frames
     all_text = "\n".join(extracted_texts)
     print("Concatenated text from all frames:")
-    print(all_text)
+    text_file_path = f"{subject}_text_output.txt"
+    with open(text_file_path, "w") as text_file:
+        text_file.write(all_text)
 else:
     print("No images found to create the summary.")
