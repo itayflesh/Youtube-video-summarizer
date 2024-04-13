@@ -213,12 +213,12 @@ for filename in os.listdir(image_directory):
         if "major_scene" in filename:
             scene_number = int(filename.split("_")[-1].split(".")[0])
             text = extract_text_from_image(image_path)
-            # print(f"Text in major frame {scene_number}: {text}")
+            print(f"Text in major frame {scene_number}: {text}")
             extracted_texts.append(text)
         elif "attractive_frame" in filename:
             scene_number = int(filename.split("_")[-1].split(".")[0])
             text = extract_text_from_image(image_path)
-            # print(f"Text in attractive frame {scene_number}: {text}")
+            print(f"Text in attractive frame {scene_number}: {text}")
             extracted_texts.append(text)
         
         # Add watermark to the image
