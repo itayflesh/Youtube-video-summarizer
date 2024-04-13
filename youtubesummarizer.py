@@ -84,12 +84,12 @@ def detect_major_frames(video_path, subject,x):
         # Save key frames for major scenes (middle frames) and attractive frames from each scene
         for scene, frame in major_scenes.items():
             if scene not in attractive_frames:
-                key_frame_path = f'{subject}_{x}_major_scene_{scene}.jpg'
+                key_frame_path = f'{subject}_major_scene_{scene}.jpg'
                 cv2.imwrite(key_frame_path, frame)
                 # print(f'Saved key frame for major scene {scene} of {subject}')
 
         for scene, frame in attractive_frames.items():
-            key_frame_path = f'{subject}_{x}_attractive_frame_{scene}.jpg'
+            key_frame_path = f'{subject}_attractive_frame_{scene}.jpg'
             cv2.imwrite(key_frame_path, frame)
             # print(f'Saved attractive frame for scene {scene} of {subject}')
     else:
@@ -177,8 +177,9 @@ def search_and_download(subject):
                 print("Video downloaded successfully!")
                 
                 # Detect major frames in the downloaded video
+                print("start detect ‘scenes’")
                 detect_major_frames(video_path, subject, 1)
-
+                print("detect ‘scenes’ finish successfully!")
                 downloaded_count += 1
                 break  # Stop processing after downloading the first suitable video
             except AgeRestrictedError:
@@ -205,6 +206,8 @@ watermark_text = "Itay Flesh"
 extracted_texts = []
 image_paths = []
 
+print(f"Extract text from the detect frames and add watermark ")
+
 for filename in os.listdir(image_directory):
     if filename.endswith(".jpg") or filename.endswith(".png"):
         image_path = os.path.join(image_directory, filename)
@@ -225,6 +228,7 @@ for filename in os.listdir(image_directory):
         add_watermark(image_path, watermark_text)
 
 # Check if there are any image paths
+print("create an animated gif with all the frames:")
 if image_paths:
     # Create an animated GIF with all the frames
     num_frames = len(image_paths)
@@ -241,8 +245,6 @@ if image_paths:
     # Print the concatenated text from all frames
     all_text = "\n".join(extracted_texts)
     print("Concatenated text from all frames:")
-    text_file_path = f"{subject}_text_output.txt"
-    with open(text_file_path, "w") as text_file:
-        text_file.write(all_text)
+    print(all_text)
 else:
     print("No images found to create the summary.")
